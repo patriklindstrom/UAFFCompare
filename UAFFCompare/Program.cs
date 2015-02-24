@@ -18,40 +18,13 @@ namespace UAFFCompare
             string fileB = args[1];
             Debug.Assert(File.Exists(fileA));
             Debug.Assert(File.Exists(fileB));
-            try
-            {
-                var fileStopwatch = Stopwatch.StartNew();
-                Console.ForegroundColor = ConsoleColor.DarkRed;
-                Console.WriteLine("Start reading {0}",fileA);
-                using (StreamReader sr = new StreamReader(fileA))
-                {
-                    String line = sr.ReadToEnd();
-                  //  Console.WriteLine(line);
-                }
-                fileStopwatch.Stop();
-                Console.ForegroundColor = ConsoleColor.DarkGreen;
-                Console.WriteLine("Done Reading {0} took {1} ms ", fileA, fileStopwatch.Elapsed.Milliseconds);
-                Console.ForegroundColor = ConsoleColor.DarkRed;
-                Console.WriteLine("Reading {0}", fileB);
-                fileStopwatch.Restart();
-                using (StreamReader sr = new StreamReader(fileB))
-                {
-                    String line = sr.ReadToEnd();
-                //    Console.WriteLine(line);
-                }
-                fileStopwatch.Stop();
-                Console.ForegroundColor = ConsoleColor.DarkGreen;
-                Console.WriteLine("DoneReading {0} took {1} ms ", fileB, fileStopwatch.Elapsed.Milliseconds);
-                Console.ForegroundColor=ConsoleColor.White;
-                Console.WriteLine("Hit return to end program");
-                Console.ReadLine();
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("The file could not be read:");
-                Console.WriteLine(e.Message);
-            }
+            var programStopwatch = Stopwatch.StartNew();
+            var fileDictA = new FileDictionaryDigger(fileA);
+            var fileDictB = new FileDictionaryDigger(fileB);
+            programStopwatch.Stop();
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms", programStopwatch.Elapsed.Milliseconds);
+            Console.ReadLine();
         }
     }
 
