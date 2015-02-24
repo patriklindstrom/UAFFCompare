@@ -19,8 +19,15 @@ namespace UAFFCompare
             Debug.Assert(File.Exists(fileA));
             Debug.Assert(File.Exists(fileB));
             var programStopwatch = Stopwatch.StartNew();
-            var fileDictA = new FileDictionaryDigger(fileA);
-            var fileDictB = new FileDictionaryDigger(fileB);
+            var listFiles = new List<FileDictionaryDigger>
+            {
+                new FileDictionaryDigger(fileA),
+                new FileDictionaryDigger(fileB)
+            };
+            foreach (var fileDictionaryDigger in listFiles)
+            {
+                fileDictionaryDigger.GetFileContent();
+            }
             programStopwatch.Stop();
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms", programStopwatch.Elapsed.Milliseconds);
@@ -31,31 +38,36 @@ namespace UAFFCompare
     public class FileDictionaryDigger
     {
         private string Filecontent { get; set; }
-        public FileDictionaryDigger(string filePath)
+        private string FilePath { get; set; }
+        public FileDictionaryDigger( string filePath)
+        {
+            FilePath = filePath;
+        }
+
+        public void GetFileContent()
         {
             try
-            {           
-            var fileStopwatch = Stopwatch.StartNew();
-            Console.ForegroundColor = ConsoleColor.DarkRed;
-            Console.WriteLine("Start reading {0}", filePath);
-            using (StreamReader sr = new StreamReader(filePath))
             {
-                 Filecontent = sr.ReadToEnd();
-                //  Console.WriteLine(line);
-            }
-            fileStopwatch.Stop();
-            Console.ForegroundColor = ConsoleColor.DarkGreen;
-            Console.WriteLine("Done Reading {0} took {1} ms ", filePath, fileStopwatch.Elapsed.Milliseconds);
-            Console.ForegroundColor = ConsoleColor.DarkRed;
+                var fileStopwatch = Stopwatch.StartNew();
+                Console.ForegroundColor = ConsoleColor.DarkRed;
+                Console.WriteLine("Start reading {0}", FilePath);
+                using (StreamReader sr = new StreamReader(FilePath))
+                {
+                    Filecontent = sr.ReadToEnd();
+                    //  Console.WriteLine(line);
+                }
+                fileStopwatch.Stop();
+                Console.ForegroundColor = ConsoleColor.DarkGreen;
+                Console.WriteLine("Done Reading {0} took {1} ms ", FilePath, fileStopwatch.Elapsed.Milliseconds);
+                Console.ForegroundColor = ConsoleColor.DarkRed;
             }
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("The file {0} could not be read:", filePath);
+                Console.WriteLine("The file {0} could not be read:", FilePath);
                 Console.WriteLine(e.Message);
                 Console.ForegroundColor = ConsoleColor.White;
             }
-        }  
-
+        }
     } 
 }
