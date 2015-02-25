@@ -22,23 +22,16 @@ namespace UAFFCompare
             var options = new Options();
             if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
-                // consume Options instance properties
-                if (options.Verbose)
-                {
-                    Console.WriteLine(options.fileA);
-                    Console.WriteLine(options.fileB);
-                }
-                else
-                    Console.WriteLine("working ...");
-            }
+
+            
             string fileA = options.fileA;
             string fileB = options.fileB;
             ValidateArgs(fileA, fileB);
             var programStopwatch = Stopwatch.StartNew();
             var fDD = new List<FileDictionaryDigger>
             {
-                new FileDictionaryDigger(fileA),
-                new FileDictionaryDigger(fileB)
+                new FileDictionaryDigger(fileA,options),
+                new FileDictionaryDigger(fileB,options)
             };
             //Multithread the reading of files and making dictionary of all lines in file
             Parallel.ForEach(fDD, fdd => fdd.DigDictionary());
@@ -58,23 +51,30 @@ namespace UAFFCompare
                 }         
             }
             programStopwatch.Stop();
-            #region Console output Answere
-            Console.WriteLine("File {0} has {1} keys. {2} of them exist in file {3} also"
-                       , Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count()
-                       , LDIntersect.Count, Path.GetFileName(fDD[1].FilePath));
-            Console.WriteLine("File {0} has {1} keys. {2} of them do not exist in file {3}"
-                               , Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count()
-                               , LDDiff.Count, Path.GetFileName(fDD[1].FilePath));
-            Console.WriteLine("Same ({0}) + Diff ({1}) = {2} == Number of rows in {3} ({4})  "
-                               , LDIntersect.Count, LDDiff.Count, LDIntersect.Count + LDDiff.Count,
-                               Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count());
-            Console.ForegroundColor = ConsoleColor.White; 
-            #endregion
+            if (options.Verbose)
+            {
+                #region Console output Answere
+                Console.WriteLine("File {0} has {1} keys. {2} of them exist in file {3} also"
+                           , Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count()
+                           , LDIntersect.Count, Path.GetFileName(fDD[1].FilePath));
+                Console.WriteLine("File {0} has {1} keys. {2} of them do not exist in file {3}"
+                                   , Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count()
+                                   , LDDiff.Count, Path.GetFileName(fDD[1].FilePath));
+                Console.WriteLine("Same ({0}) + Diff ({1}) = {2} == Number of rows in {3} ({4})  "
+                                   , LDIntersect.Count, LDDiff.Count, LDIntersect.Count + LDDiff.Count,
+                                   Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count());
+                Console.ForegroundColor = ConsoleColor.White;
+                #endregion
+            }
             LDDiff.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath), "UAFFDiffRows.csv"));
             LDIntersect.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath), "UAFFCommonRows.csv"));
-            Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms", programStopwatch.Elapsed.Milliseconds);
-            Console.ReadLine();
+            if (options.Verbose)
+            {
+                Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms", programStopwatch.Elapsed.Milliseconds);
+                Console.ReadLine();
+            }
         }
+        } 
         private static void ValidateArgs(string fileA,string fileB)
         {
             Debug.Assert(String.IsNullOrEmpty(fileA)==false);
@@ -96,8 +96,10 @@ namespace UAFFCompare
         private string Filecontent { get; set; }
         public string FilePath { get; set; }
         public Dictionary<string, string> LineDictionary { get; set; }
-        public FileDictionaryDigger( string filePath)
+        public Options Option;
+        public FileDictionaryDigger( string filePath,Options option)
         {
+            Option = option;
             FilePath = filePath;
             LineDictionary = new Dictionary<string, string>();
         }
@@ -110,8 +112,10 @@ namespace UAFFCompare
             try
             {
                 var fileStopwatch = Stopwatch.StartNew();
+                if (Option.Verbose) { 
                 Console.ForegroundColor = ConsoleColor.DarkRed;
                 Console.WriteLine("Start reading {0}", FilePath);
+                }
                 using (var sr = new StreamReader(File.OpenRead(FilePath)))
                 {
                     string line;
@@ -126,9 +130,11 @@ namespace UAFFCompare
                     }
                 }
                 fileStopwatch.Stop();
+                 if (Option.Verbose) {
                 Console.ForegroundColor = ConsoleColor.DarkGreen;
                 Console.WriteLine("Done Reading {0} took {1} ms contains {2} rows", FilePath, fileStopwatch.Elapsed.Milliseconds, LineDictionary.Count);
                 Console.ForegroundColor = ConsoleColor.DarkRed;
+                 }
             }
             catch (Exception e)
             {
@@ -148,7 +154,7 @@ namespace UAFFCompare
                 writer.WriteLine("{0}", item.Value);
             } 
     }
-    class Options
+    public class Options
     {
         [Option('a', "fileA", Required = true, HelpText = "Input A csv file to read.")]
         public string fileA { get; set; }
