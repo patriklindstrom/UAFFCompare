@@ -20,17 +20,43 @@ namespace UAFFCompare
             string fileA = args[0];
             string fileB = args[1];
             var programStopwatch = Stopwatch.StartNew();
-            var fileDictionaryDiggers = new List<FileDictionaryDigger>
+            var fDD = new List<FileDictionaryDigger>
             {
                 new FileDictionaryDigger(fileA),
                 new FileDictionaryDigger(fileB)
             };
             //Multithread the reading of files and making dictionary of all lines in file
-            Parallel.ForEach(fileDictionaryDiggers, fdd => fdd.DigDictionary());
+            Parallel.ForEach(fDD, fdd => fdd.DigDictionary());
            // var intersectDict =  fileDictionaryDiggers[0].LineDictionary.Intersect(fileDictionaryDiggers[0].LineDictionary);
-            var intersectDict = fileDictionaryDiggers[0].LineDictionary.AsParallel().Intersect(fileDictionaryDiggers[0].LineDictionary.AsParallel());
+           // var intersectDict = fileDictionaryDiggers[0].LineDictionary.AsParallel().Intersect(fileDictionaryDiggers[0].LineDictionary.AsParallel());
+            var LDDiff = new Dictionary<string, string>();
+            var LDIntersect = new Dictionary<string, string>();
+            foreach (var line in fDD[0].LineDictionary)
+            {
+                if (fDD[1].LineDictionary.ContainsKey(line.Key))
+                {
+                    LDIntersect.Add(line.Key, line.Value); 
+                }
+                else
+                {
+                    LDDiff.Add(line.Key, line.Value);
+                }         
+            }
             programStopwatch.Stop();
-            Console.ForegroundColor = ConsoleColor.White;
+            #region Console output Answere
+            Console.WriteLine("File {0} has {1} keys. {2} of them exist in file {3} also"
+                       , Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count()
+                       , LDIntersect.Count, Path.GetFileName(fDD[1].FilePath));
+            Console.WriteLine("File {0} has {1} keys. {2} of them do not exist in file {3}"
+                               , Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count()
+                               , LDDiff.Count, Path.GetFileName(fDD[1].FilePath));
+            Console.WriteLine("Same ({0}) + Diff ({1}) = {2} == Number of rows in {3} ({4})  "
+                               , LDIntersect.Count, LDDiff.Count, LDIntersect.Count + LDDiff.Count,
+                               Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count());
+            Console.ForegroundColor = ConsoleColor.White; 
+            #endregion
+            LDDiff.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath), "UAFFDiffRows.csv"));
+            LDIntersect.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath), "UAFFCommonRows.csv"));
             Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms", programStopwatch.Elapsed.Milliseconds);
             Console.ReadLine();
         }
@@ -56,7 +82,7 @@ namespace UAFFCompare
     {
         const int OFFSET_UNIQUE_START_FIELD = 3;
         private string Filecontent { get; set; }
-        private string FilePath { get; set; }
+        public string FilePath { get; set; }
         public Dictionary<string, string> LineDictionary { get; set; }
         public FileDictionaryDigger( string filePath)
         {
@@ -100,5 +126,14 @@ namespace UAFFCompare
                 Console.ForegroundColor = ConsoleColor.White;
             }
         }
-    } 
+       
+    }
+    public static class Dictionary
+    {
+    public static void SaveValuesAsFile(this Dictionary<string, string> coll,string filePath){
+        using (StreamWriter writer = new StreamWriter(filePath))
+            foreach (var item in coll)
+                writer.WriteLine("{0}", item.Value);
+            } 
+    }
 }
