@@ -8,6 +8,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
+using CommandLine;
+using CommandLine.Text;
 
 namespace UAFFCompare
 {
@@ -16,9 +18,22 @@ namespace UAFFCompare
     {     
         static void Main(string[] args)
         {
-            ValidateArgs(args);
-            string fileA = args[0];
-            string fileB = args[1];
+
+            var options = new Options();
+            if (CommandLine.Parser.Default.ParseArguments(args, options))
+            {
+                // consume Options instance properties
+                if (options.Verbose)
+                {
+                    Console.WriteLine(options.fileA);
+                    Console.WriteLine(options.fileB);
+                }
+                else
+                    Console.WriteLine("working ...");
+            }
+            string fileA = options.fileA;
+            string fileB = options.fileB;
+            ValidateArgs(fileA, fileB);
             var programStopwatch = Stopwatch.StartNew();
             var fDD = new List<FileDictionaryDigger>
             {
@@ -60,18 +75,15 @@ namespace UAFFCompare
             Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms", programStopwatch.Elapsed.Milliseconds);
             Console.ReadLine();
         }
-        private static void ValidateArgs(string[] args)
+        private static void ValidateArgs(string fileA,string fileB)
         {
-            Debug.Assert(args.Length == 2);
-            Debug.WriteLine(args[0]);
-            Debug.WriteLine(args[1]);
-            if (args.Length != 2)
-            {
-                throw new ArgumentException("Two UAFF files path has to be given");
-            }
-            Debug.Assert(File.Exists(args[0]));
-            Debug.Assert(File.Exists(args[1]));
-            if (!(File.Exists(args[0]) && File.Exists(args[1])))
+            Debug.Assert(String.IsNullOrEmpty(fileA)==false);
+            Debug.Assert(String.IsNullOrEmpty(fileB) == false);
+            Debug.WriteLine(fileA);
+            Debug.WriteLine(fileB);
+            Debug.Assert(File.Exists(fileA));
+            Debug.Assert(File.Exists(fileB));
+            if (!(File.Exists(fileA) && File.Exists(fileB)))
             {
                 throw new ArgumentException("File do not exist");
             }
@@ -136,4 +148,28 @@ namespace UAFFCompare
                 writer.WriteLine("{0}", item.Value);
             } 
     }
+    class Options
+    {
+        [Option('a', "fileA", Required = true, HelpText = "Input A csv file to read.")]
+        public string fileA { get; set; }
+        [Option('b', "fileb", Required = true, HelpText = "Input B csv file to read.")]
+        public string fileB { get; set; }
+
+        [Option('v', null, HelpText = "Print details during execution.")]
+        public bool Verbose { get; set; }
+
+        [HelpOption]
+        public string GetUsage()
+        {
+            // this without using CommandLine.Text
+            //  or using HelpText.AutoBuild
+            var usage = new StringBuilder();
+            usage.AppendLine(String.Format("UAFFCompare Application takes Difference between two cvs files on columns 4,6,7 version {0}", System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString()));
+            usage.AppendLine("give help as param for help. Simple usage -a[fileA] -b[fileB] ");
+            usage.AppendLine("Developed by Patrik Lindström 2015-02-25");
+            return usage.ToString();
+        }
+    }
+   
 }
+
