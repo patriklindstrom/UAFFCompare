@@ -76,25 +76,16 @@ namespace UAFFCompare
                 Console.WriteLine("Start reading {0}", FilePath);
                 using (var sr = new StreamReader(File.OpenRead(FilePath)))
                 {
-                   // Filecontent = sr.ReadToEnd();
-                   //  Console.WriteLine(line);
                     string line;
-                    string washedLine;
-                    MD5 md5Hash = MD5.Create();
+                    var rowKey = new StringBuilder();
                     while ((line = sr.ReadLine()) != null)
                     {
                        var fieldArr= line.Split(';');
-                        //Only choose fields that are unique. The 3 first fields are not part of the what makes the row unique according to rumours.
-                       var uniqueFields = new ArraySegment<string>(fieldArr, OFFSET_UNIQUE_START_FIELD, fieldArr.Length - OFFSET_UNIQUE_START_FIELD);
-                       //Remove the whitespace in fields and make it a long string again.
-                       washedLine = String.Join("|", uniqueFields.Select(uF=>uF.Trim()));
-                        //Calculate a small hash key that is unique for this row.
-                       byte[] hashBytes = md5Hash.ComputeHash(Encoding.Default.GetBytes(washedLine));
-                       var rowKey = System.BitConverter.ToString(hashBytes);
-                        //add the line and its unique key to a dictionary.
-                        LineDictionary.Add(rowKey, line);
+                       //Fields 4,6,7 makes the row unique according to rumours. Not that fieldArr is nollbased so it is: 3,5,6
+                        rowKey.Append(fieldArr[3]).Append("|").Append(fieldArr[5]).Append("|").Append(fieldArr[6]);
+                        LineDictionary.Add(rowKey.ToString(), line);
+                        rowKey.Clear();
                     }
-
                 }
                 fileStopwatch.Stop();
                 Console.ForegroundColor = ConsoleColor.DarkGreen;
