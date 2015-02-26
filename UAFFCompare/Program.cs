@@ -36,14 +36,20 @@ namespace UAFFCompare
                 var programStopwatch = Stopwatch.StartNew();
                 var fDD = new List<FileDictionaryDigger>
                 {
-                    new FileDictionaryDigger(fileA, options),
-                    new FileDictionaryDigger(fileB, options)
+                    new FileDictionaryDigger(fileA,"A", options),
+                    new FileDictionaryDigger(fileB,"B", options)
                 };
                 //Multithread the reading of files and making dictionary of all lines in file
                 Parallel.ForEach(fDD, fdd => fdd.DigDictionary());
+                //Using the sets a,b from files - dictionary find difference and intersection.
+                //Give the nicer names
+                var a = fDD.First(f => f.Name == "A").LineDictionary;
+                var b = fDD.First(f => f.Name == "B").LineDictionary; 
+                //We need Compare to use set logic on keys only not Key and Value which is the default - odd that is the default and we have to override it.
                 var keyOnly = new DictCompareOnKeyOnly();
-                Dictionary<string, string> ldDiffB = fDD[1].LineDictionary.Except(fDD[0].LineDictionary, keyOnly).ToDictionary(ld=>ld.Key,ld=>ld.Value);
-                Dictionary<string, string> ldIntersectAandB = fDD[1].LineDictionary.Intersect(fDD[0].LineDictionary, keyOnly).ToDictionary(ld => ld.Key, ld => ld.Value);
+                //Here comes the magic simple Excetp and force it back to Dictionary.
+                Dictionary<string, string> ldDiffB = b.Except(a, keyOnly).ToDictionary(ld=>ld.Key,ld=>ld.Value);
+                Dictionary<string, string> ldIntersectAandB = b.Intersect(a, keyOnly).ToDictionary(ld => ld.Key, ld => ld.Value);
                 programStopwatch.Stop();
                 if (options.Verbose)
                 {
@@ -61,10 +67,8 @@ namespace UAFFCompare
                     Console.ForegroundColor = ConsoleColor.White;
                     #endregion
                 }
-                ldDiffB.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath),
-                    "UAFFDiffRows.csv"));
-                ldIntersectAandB.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath),
-                    "UAFFCommonRows.csv"));
+                ldDiffB.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath),"UAFFDiffRows.csv"));
+                ldIntersectAandB.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath),"UAFFCommonRows.csv"));
                 #region Console output Done
 
                 if (options.Verbose)
@@ -98,7 +102,7 @@ namespace UAFFCompare
     {
         private const int OFFSET_UNIQUE_START_FIELD = 3;
         private string Filecontent { get; set; }
-
+        public string Name { get; set; }
         public string FilePath
         {
             get { return _filePath ?? String.Empty; }
@@ -109,10 +113,11 @@ namespace UAFFCompare
         public Options Option;
         private string _filePath;
 
-        public FileDictionaryDigger(string filePath, Options option)
+        public FileDictionaryDigger(string filePath,string name, Options option)
         {
             Option = option;
             FilePath = filePath;
+            Name = name;
             LineDictionary = new Dictionary<string, string>();
         }
 
