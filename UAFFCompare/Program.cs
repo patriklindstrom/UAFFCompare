@@ -127,12 +127,16 @@ namespace UAFFCompare
             try
             {
                 var fileStopwatch = Stopwatch.StartNew();
+                #region Verbose output
+
                 if (Option.Verbose)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkRed;
                     Console.WriteLine("Start reading {0}", FilePath);
                 }
-                using (var sr = new StreamReader(File.OpenRead(FilePath)))
+
+                #endregion
+                using (var sr = new DataReader(FilePath))
                 {
                     string line;
                     var rowKey = new StringBuilder();
@@ -147,6 +151,8 @@ namespace UAFFCompare
                     }
                 }
                 fileStopwatch.Stop();
+                #region Verbose output
+
                 if (Option.Verbose)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkGreen;
@@ -154,7 +160,11 @@ namespace UAFFCompare
                         fileStopwatch.Elapsed.Milliseconds, LineDictionary.Count);
                     Console.ForegroundColor = ConsoleColor.DarkRed;
                 }
+
+                #endregion
             }
+                #region Catch if error
+
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -163,13 +173,14 @@ namespace UAFFCompare
                 Console.WriteLine(e.Message);
                 Console.ForegroundColor = ConsoleColor.White;
             }
+
+            #endregion
         }
     }
-
     public static class Dictionary
     {
         /// <summary>
-        /// Saves the value part of a string string dictionary as rows in a textfile
+        /// Extended method that saves the value part of a string string dictionary as rows in a textfile
         /// </summary>
         /// <param name="dict">this dictionary</param>
         /// <param name="filePath">The path to where the files should be stored eg: c:\temp</param>
@@ -223,6 +234,29 @@ namespace UAFFCompare
             usage.AppendLine("give help as param for help. Simple usage -a[fileA] -b[fileB] ");
             usage.AppendLine("Developed by Patrik Lindström 2015-02-25");
             return usage.ToString();
+        }
+    }
+
+    interface ILineReader
+    {
+      string  ReadLine();
+    }
+
+    public class DataReader : ILineReader, IDisposable
+    {
+        public StreamReader StreamReader { get; set; }
+        public DataReader(string path)
+        {
+            StreamReader = new StreamReader(File.OpenRead(path));
+        }
+        public string ReadLine()
+        {
+            return StreamReader.ReadLine();
+        }
+
+        public void Dispose()
+        {
+            StreamReader.Dispose();
         }
     }
 }
