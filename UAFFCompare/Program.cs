@@ -109,19 +109,21 @@ namespace UAFFCompare
         }
         private void GetFileContent()
         {
+            int i = 0; //rowcounter to see where error occured
             try
             {
                 var fileStopwatch = Stopwatch.StartNew();
                 if (Option.Verbose) { 
                 Console.ForegroundColor = ConsoleColor.DarkRed;
                 Console.WriteLine("Start reading {0}", FilePath);
-                }
+                } 
                 using (var sr = new StreamReader(File.OpenRead(FilePath)))
                 {
                     string line;
-                    var rowKey = new StringBuilder();
+                    var rowKey = new StringBuilder();                    
                     while ((line = sr.ReadLine()) != null)
                     {
+                        i += 1;
                        var fieldArr= line.Split(';');
                        //Fields 4,6,7 makes the row unique according to rumours. Not that fieldArr is nollbased so it is: 3,5,6
                         rowKey.Append(fieldArr[3]).Append("|").Append(fieldArr[5]).Append("|").Append(fieldArr[6]);
@@ -139,7 +141,7 @@ namespace UAFFCompare
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("The file {0} could not be transformed to Dictionary structure:", FilePath);
+                Console.WriteLine("The file {0} could not be transformed to Dictionary structure error in line {1}:", FilePath,i);
                 Console.WriteLine(e.Message);
                 Console.ForegroundColor = ConsoleColor.White;
             }
