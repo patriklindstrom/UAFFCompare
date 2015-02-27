@@ -56,8 +56,6 @@ namespace UAFFCompare
                     new OutputObj("IntersectAandB",intersectAandB, options)
                 };
                 Parallel.ForEach(outPutList, oL => oL.Output());
-                diffB.SaveValuesAsFile(Path.Combine(Path.GetDirectoryName(b.FilePath),"DiffB_" + DateTime.Now.ToString("yyyMMddTHHmmss") + ".csv"));
-                intersectAandB.SaveValuesAsFile(Path.Combine(Path.GetDirectoryName(b.FilePath),"IntersectAandB" + DateTime.Now.ToString("yyyMMddTHHmmss") + ".csv"));
                 VerboseConsoleEndMsg(options,programStopwatch); 
                 programStopwatch.Stop();
             }
