@@ -18,5 +18,10 @@ namespace UAFFCompare.Test
         public static string DataPath = "C:\\temp\\testpath";
         public static string Name = "TestName_Tore";
 
+        public static string FileA = "D:\\DataImport\\TestFileA.csv}";
+        public static string FileB = "D:\\DataImport\\TestFileB.csv}";
+        public static bool IntersectAandB =true;
+        public static bool Verbose;
+        public static bool DiffB = true;
     }
 }

@@ -96,9 +96,9 @@ namespace UAFFCompare
         public string Name { get; set; }
         public string DataPath  { get; set; }
         public Dictionary<string,string> LineDictionary { get; set; }
-        public Options Option;
+        public IOptions Option;
 
-        public DataChunk(string dataPath,string name, Options option)
+        public DataChunk(string dataPath,string name, IOptions option)
         {
             Option = option;
             DataPath = dataPath;
@@ -125,13 +125,14 @@ namespace UAFFCompare
                 {
                     string line;
                     var rowKey = new StringBuilder();
-                    var colKeys = new int[] {4, 6, 7};
+                    var colKeys =Option.Keycolumns;
+                    var sepChar = Option.Fieldseparator;
                     while ((line = dr.ReadLine()) != null)
                     {
                         i += 1;
                         
                         //Fields 4,6,7 makes the row unique according to rumours. Not that fieldArr is nollbased so it is: 3,5,6                   
-                        BuildRowKey(ref rowKey, line, ';', colKeys);
+                        BuildRowKey(ref rowKey, line, sepChar, colKeys);
                         LineDictionary.Add(rowKey.ToString(), line);
                         rowKey.Clear();
                     }
@@ -278,8 +279,22 @@ namespace UAFFCompare
         }
     }
 
-    public class Options
+    public interface IOptions
     {
+        string FileA { get; set; }
+        string FileB { get; set; }
+        char Fieldseparator { get; set; }
+        bool DiffB { get; set; }
+        bool IntersectAandB { get; set; }
+        bool Verbose { get; set; }
+        int[] Keycolumns { get; set; }
+        string GetUsage();
+    }
+
+    public class Options : IOptions
+    {
+        
+
         [Option('a', "fileA", Required = true, HelpText = "Input A csv file to read.")]
         public string FileA { get; set; }
 
@@ -288,13 +303,24 @@ namespace UAFFCompare
 
 
         [Option('d', "DiffB", Required = false, HelpText = "Calculate and output intersectAandB csv file.")]
-        public string DiffB { get; set; }
+        public bool DiffB { get; set; }
 
         [Option('i', "IntersectAandB", Required = false, HelpText = "Calculate and output intersectAandB csv file.")]
-        public string IntersectAandB { get; set; }
-
+        public bool IntersectAandB { get; set; }
+        [Option('c', "keycolumns", Required = false, HelpText = "What columns combined are the key of every row.")]
+        [OptionArray('k', "keycolumns", Required = false, DefaultValue = new int[] { 4, 5, 7 }, HelpText = "What columns combined are the key of every row.")]
+        public int[] Keycolumns { get; set; }
         [Option('v', null, HelpText = "Print details during execution.")]
         public bool Verbose { get; set; }
+        [Option('s', "fieldseparator",DefaultValue = ';',HelpText = "Char that separates every column")]
+        public char Fieldseparator { get; set; }
+        [Option('i', "version", HelpText = "Prints version number of program.")]
+        public string Version
+        {
+            get { return Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            }
+          
+        }
 
         [HelpOption]
         public string GetUsage()
