@@ -45,7 +45,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MakeRowKeyTest.cs" />
+    <Compile Include="MakeDataChunkTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestValues.cs" />
   </ItemGroup>

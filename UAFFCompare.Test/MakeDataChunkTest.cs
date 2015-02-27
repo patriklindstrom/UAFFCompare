@@ -30,7 +30,7 @@ namespace UAFFCompare.Test
         public void ShouldGenerateDataDictionary()
         {
             //Arrange
-          //  var mockOptions = MockRepository.GenerateStub<Options>();
+            //  var mockOptions = MockRepository.GenerateStub<Options>();
             var mockOptions = new Options
             {
                 FileA = Mv.FileA
@@ -38,7 +38,7 @@ namespace UAFFCompare.Test
                 FileB = Mv.FileB
                 ,
                 DiffB = Mv.DiffB
-    ,
+                ,
                 IntersectAandB = Mv.IntersectAandB
                 ,
                 Verbose = Mv.Verbose
@@ -50,7 +50,7 @@ namespace UAFFCompare.Test
             var mockLineReader = MockRepository.GenerateStub<ILineReader>();
             mockLineReader.Stub(f => f.ReadLine()).Return(Mv.Line);
             //var expectedDict = new Dictionary<string, string> {{Mv.ExpectedKey, Mv.Line},{"foo","fum"}};
-            var expectedDict = new Dictionary<string, string> {{Mv.ExpectedKey, Mv.Line}};
+            var expectedDict = new Dictionary<string, string> { { Mv.ExpectedKey, Mv.Line } };
             var sut = new DataChunk(dataPath: Mv.DataPath, name: Mv.Name, option: mockOptions);
             //Act
             sut.GetDataContent(mockLineReader);
@@ -73,15 +73,18 @@ namespace UAFFCompare.Test
                 FileB = Mv.FileB
                 ,
                 DiffB = Mv.DiffB
-    ,                IntersectAandB = Mv.IntersectAandB
+                ,
+                IntersectAandB = Mv.IntersectAandB
                 ,
                 Verbose = Mv.Verbose
-                ,Fieldseparator = Mv.Splitchar
-                ,Keycolumns = Mv.ColKeys
+                ,
+                Fieldseparator = Mv.Splitchar
+                ,
+                Keycolumns = Mv.ColKeys
             };
             var mockLineReader = MockRepository.GenerateStub<ILineReader>();
             mockLineReader.Stub(f => f.ReadLine()).Return(Mv.Line);
-            var expectedDict = new Dictionary<string, string> {{Mv.ExpectedKey, Mv.Line}};
+            var expectedDict = new Dictionary<string, string> { { Mv.ExpectedKey, Mv.Line } };
             var sut = new DataChunk(dataPath: Mv.DataPath, name: Mv.Name, option: opt);
             //Act
             sut.GetDataContent(mockLineReader);
@@ -92,6 +95,38 @@ namespace UAFFCompare.Test
             Assert.AreEqual(Mv.Name, sut.Name, "Name should be same");
             Assert.AreEqual(opt, sut.Option, "Option should be same");
             Assert.IsTrue(sut.LineDictionary.ContainsKey(Mv.ExpectedKey), "Dictionary should contain test key");
+        }
+
+        [Test]
+        public void CheckThatReadLineIsRun()
+        {
+            //Arrange
+            var opt = new Options
+            {
+                FileA = Mv.FileA
+                ,
+                FileB = Mv.FileB
+                ,
+                DiffB = Mv.DiffB
+                ,
+                IntersectAandB = Mv.IntersectAandB
+                ,
+                Verbose = Mv.Verbose
+                ,
+                Fieldseparator = Mv.Splitchar
+                ,
+                Keycolumns = Mv.ColKeys
+            };
+            //Act
+
+            var mockLineReader = MockRepository.GenerateStub<ILineReader>();
+            mockLineReader.Stub(f => f.ReadLine()).Return(Mv.Line);
+            var expectedDict = new Dictionary<string, string> { { Mv.ExpectedKey, Mv.Line } };
+            var sut = new DataChunk(dataPath: Mv.DataPath, name: Mv.Name, option: opt);
+        
+            sut.GetDataContent(mockLineReader);
+            //Assert
+            mockLineReader.AssertWasCalled(r=>r.ReadLine());
         }
     }
 }

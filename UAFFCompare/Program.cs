@@ -86,6 +86,7 @@ namespace UAFFCompare
     {
         string Name { get; set; }
         string DataPath { get; set; }
+        IOptions Option { get; set; }
         Dictionary<string, string> LineDictionary { get; set; }
         void GetDataContent(ILineReader dr);
         void BuildRowKey(ref StringBuilder rowKey, string line, char splitChar, int[] keyColumns);
@@ -96,7 +97,7 @@ namespace UAFFCompare
         public string Name { get; set; }
         public string DataPath  { get; set; }
         public Dictionary<string,string> LineDictionary { get; set; }
-        public IOptions Option;
+        public IOptions Option { get; set; }
 
         public DataChunk(string dataPath,string name, IOptions option)
         {
