@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,9 +21,10 @@ namespace UAFFCompare
         /// Takes two parameters file A and File B. Set A is contained in B also.
         /// A is file n and B is file n+1
         ///  We want the difference from (in bool notation): 
-        /// (A'B)+(AB) => DiffFile
-        /// (AB) => IntersectionFile
-        /// NotaBene DiffFile+IntersctionFile => FileA
+        /// not A and B=> DiffFile  (see http://www.wolframalpha.com/input/?i=not+A+and+B ) 
+        /// A and B => IntersectionFile (see http://www.wolframalpha.com/input/?i=A+and+B ) 
+        /// NotaBene combined => (not A and B) or (A and B) (see http://www.wolframalpha.com/input/?i=%28not+A+and+B%29+or+%28A+and+B%29 )
+        /// DiffFile+IntersctionFile => FileB
         /// </summary>
         /// <param name="args">-a fileA -b fileB -v optional verbose</param>
         private static void Main(string[] args)
@@ -30,70 +32,84 @@ namespace UAFFCompare
             var options = new Options();
             if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
-                string fileA = options.FileA;
-                string fileB = options.FileB;
-                ValidateArgs(fileA, fileB);
                 var programStopwatch = Stopwatch.StartNew();
-                var fDD = new List<FileDictionaryDigger>
+                var dictList = new List<FileDictionaryDigger>
                 {
-                    new FileDictionaryDigger(fileA,"A", options),
-                    new FileDictionaryDigger(fileB,"B", options)
+                    new FileDictionaryDigger(options.FileA,"A", options),
+                    new FileDictionaryDigger(options.FileB,"B", options)
                 };
                 //Multithread the reading of files and making dictionary of all lines in file
-                Parallel.ForEach(fDD, fdd => fdd.DigDictionary());
-                //Using the sets a,b from files - dictionary find difference and intersection.
-                //Give the nicer names
-                var a = fDD.First(f => f.Name == "A").LineDictionary;
-                var b = fDD.First(f => f.Name == "B").LineDictionary; 
+                Parallel.ForEach(dictList, dl => dl.DigDictionary());
+                //Give the sets nicer names
+                var a = dictList.First(f => f.Name == "A");
+                var b = dictList.First(f => f.Name == "B"); 
                 //We need Compare to use set logic on keys only not Key and Value which is the default - odd that is the default and we have to override it.
                 var keyOnly = new DictCompareOnKeyOnly();
-                //Here comes the magic simple Excetp and force it back to Dictionary.
-                Dictionary<string, string> ldDiffB = b.Except(a, keyOnly).ToDictionary(ld=>ld.Key,ld=>ld.Value);
-                Dictionary<string, string> ldIntersectAandB = b.Intersect(a, keyOnly).ToDictionary(ld => ld.Key, ld => ld.Value);
+                //Here comes the magic simple Except and Intersect and force it back to Dictionary.
+                Dictionary<string, string> diffB = b.LineDictionary.Except(a.LineDictionary, keyOnly).ToDictionary(ld=>ld.Key,ld=>ld.Value);
+                Dictionary<string, string> intersectAandB = b.LineDictionary.Intersect(a.LineDictionary, keyOnly).ToDictionary(ld => ld.Key, ld => ld.Value);
+                VerboseConsoleStatisticsOutput(options,dictList, intersectAandB, diffB, programStopwatch); 
+                //Here we save the output as text files
+                var outPutList = new List<OutputObj>
+                {
+                    new OutputObj("DiffB",diffB, options),
+                    new OutputObj("IntersectAandB",intersectAandB, options)
+                };
+                Parallel.ForEach(outPutList, oL => oL.Output());
+                diffB.SaveValuesAsFile(Path.Combine(Path.GetDirectoryName(b.FilePath),"DiffB_" + DateTime.Now.ToString("yyyMMddTHHmmss") + ".csv"));
+                intersectAandB.SaveValuesAsFile(Path.Combine(Path.GetDirectoryName(b.FilePath),"IntersectAandB" + DateTime.Now.ToString("yyyMMddTHHmmss") + ".csv"));
+                VerboseConsoleEndMsg(options,programStopwatch); 
                 programStopwatch.Stop();
-                if (options.Verbose)
-                {
-                    #region Console output Answer
-
-                    Console.WriteLine("File {0} has {1} keys. {2} of them exist in file {3} also"
-                        , Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count()
-                        , ldIntersectAandB.Count(), Path.GetFileName(fDD[1].FilePath));
-                    Console.WriteLine("File {0} has {1} keys. {2} of them do not exist in file {3}"
-                        , Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count()
-                        , ldDiffB.Count(), Path.GetFileName(fDD[1].FilePath));
-                    Console.WriteLine("Same ({0}) + Diff ({1}) = {2} == Number of rows in {3} ({4})  "
-                        , ldIntersectAandB.Count(), ldDiffB.Count(), ldIntersectAandB.Count() + ldDiffB.Count(),
-                        Path.GetFileName(fDD[0].FilePath), fDD[0].LineDictionary.Count());
-                    Console.ForegroundColor = ConsoleColor.White;
-                    #endregion
-                }
-                ldDiffB.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath),"UAFFDiffRows.csv"));
-                ldIntersectAandB.SaveValuesAsFile(System.IO.Path.Combine(Path.GetDirectoryName(fDD[0].FilePath),"UAFFCommonRows.csv"));
-                #region Console output Done
-
-                if (options.Verbose)
-                {
-                    Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms",
-                        programStopwatch.Elapsed.Milliseconds);
-                    Console.ReadLine();
-                }
-
-                #endregion
-
+            }
+        }
+        private static void VerboseConsoleStatisticsOutput(Options options, List<FileDictionaryDigger> dictList, Dictionary<string, string> ldIntersectAandB, Dictionary<string, string> ldDiffB, Stopwatch programStopwatch)
+        {
+            if (options.Verbose)
+            {                           
+            var a = dictList.First(f => f.Name == "A");
+            var b = dictList.First(f => f.Name == "B"); 
+            Console.WriteLine("File {0} ({4}) has {1} keys. {2} of them exist in file {3} ({5}) also",Path.GetFileName(b.FilePath), b.LineDictionary.Count(), ldIntersectAandB.Count(),Path.GetFileName(a.FilePath), b.Name, a.Name);
+            Console.WriteLine("File {0} ({4}) has {1} keys. {2} of them do not exist in file {3} ({5})",Path.GetFileName(b.FilePath), b.LineDictionary.Count(), ldDiffB.Count(),Path.GetFileName(a.FilePath),b.Name, a.Name);
+            Console.WriteLine("Same ({0}) + Diff ({1}) = {2} == Number of rows in ({5}) {3} ({4})  ", ldIntersectAandB.Count(),ldDiffB.Count(), ldIntersectAandB.Count() + ldDiffB.Count(), Path.GetFileName(b.FilePath),b.LineDictionary.Count(),b.Name);
+            Console.WriteLine("Time after creating set operator {0} ms", programStopwatch.ElapsedMilliseconds);
+            Console.ForegroundColor = ConsoleColor.White;
+            }
+        }
+        private static void VerboseConsoleEndMsg(Options options, Stopwatch programStopwatch)
+        {
+            if (options.Verbose)
+            {
+                Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms",
+                    programStopwatch.Elapsed.Milliseconds);
+                Console.ReadLine();
             }
         }
 
-        private static void ValidateArgs(string fileA, string fileB)
+    }
+
+    public class OutputObj
+    {
+
+        public string Name { get; set; }
+        public Dictionary<string, string> Dict { get; set; }
+        public Options Opt { get; set; }
+
+        public OutputObj(string name, Dictionary<string, string> dict, Options opt)
         {
-            Debug.Assert(String.IsNullOrEmpty(fileA) == false);
-            Debug.Assert(String.IsNullOrEmpty(fileB) == false);
-            Debug.WriteLine(fileA);
-            Debug.WriteLine(fileB);
-            Debug.Assert(File.Exists(fileA));
-            Debug.Assert(File.Exists(fileB));
-            if (!(File.Exists(fileA) && File.Exists(fileB)))
+            Name = name;
+            Dict = dict;
+            Opt = opt;
+        }
+
+        public void Output()
+        {
+            string dir = Path.GetDirectoryName(Opt.FileB);
+            string ext = Path.GetExtension(Opt.FileB);
+            if (dir != null)
             {
-                throw new ArgumentException("File do not exist");
+                Directory.Exists(dir);
+                string fileName = Path.Combine(dir, Name + DateTime.Now.ToString("yyyMMddTHHmmss") + ext);
+                Dict.SaveValuesAsFile(fileName);
             }
         }
     }
@@ -161,8 +177,7 @@ namespace UAFFCompare
                 if (Option.Verbose)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkGreen;
-                    Console.WriteLine("Done Reading {0} took {1} ms contains {2} rows", FilePath,
-                        fileStopwatch.Elapsed.Milliseconds, LineDictionary.Count);
+                    Console.WriteLine("Done Reading {0} called file {3}. It took {1} ms and contained {2} rows", FilePath,fileStopwatch.Elapsed.Milliseconds, LineDictionary.Count,Name);
                     Console.ForegroundColor = ConsoleColor.DarkRed;
                 }
 
@@ -182,6 +197,46 @@ namespace UAFFCompare
             #endregion
         }
     }
+
+    #region Stuff to abstract the StreamText Reader into DataReader
+
+    internal interface ILineReader
+    {
+        string ReadLine();
+    }
+
+    public class DataReader : ILineReader, IDisposable
+    {
+        public StreamReader StreamReader { get; set; }
+
+        public DataReader(string path)
+        {
+            Debug.Assert(String.IsNullOrEmpty(path) == false);
+            Debug.WriteLine(path);
+            Debug.Assert(File.Exists(path));
+            if (!(File.Exists(path)))
+            {
+                throw new ArgumentException("File do not exist");
+            }
+            StreamReader = new StreamReader(File.OpenRead(path));
+        }
+
+        public string ReadLine()
+        {
+            return StreamReader.ReadLine();
+        }
+
+        public void Dispose()
+        {
+            StreamReader.Dispose();
+        }
+    }
+
+    #endregion
+
+
+    #region Tool classes like extented method and argument parsers
+
     public static class Dictionary
     {
         /// <summary>
@@ -196,6 +251,7 @@ namespace UAFFCompare
                     writer.WriteLine("{0}", item.Value);
         }
     }
+
     public class DictCompareOnKeyOnly : IEqualityComparer<KeyValuePair<string, string>>
     {
         public bool Equals(KeyValuePair<string, string> x, KeyValuePair<string, string> y)
@@ -208,6 +264,7 @@ namespace UAFFCompare
             return obj.Key.GetHashCode();
         }
     }
+
     public class Options
     {
         [Option('a', "fileA", Required = true, HelpText = "Input A csv file to read.")]
@@ -235,34 +292,13 @@ namespace UAFFCompare
             usage.AppendLine(
                 String.Format(
                     "UAFFCompare Application takes Difference between two cvs files on columns 4,6,7 version {0}",
-                    System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString()));
+                    Assembly.GetExecutingAssembly().GetName().Version.ToString()));
             usage.AppendLine("give help as param for help. Simple usage -a[fileA] -b[fileB] ");
             usage.AppendLine("Developed by Patrik Lindström 2015-02-25");
             return usage.ToString();
         }
     }
+    #endregion
 
-    interface ILineReader
-    {
-      string  ReadLine();
-    }
-
-    public class DataReader : ILineReader, IDisposable
-    {
-        public StreamReader StreamReader { get; set; }
-        public DataReader(string path)
-        {
-            StreamReader = new StreamReader(File.OpenRead(path));
-        }
-        public string ReadLine()
-        {
-            return StreamReader.ReadLine();
-        }
-
-        public void Dispose()
-        {
-            StreamReader.Dispose();
-        }
-    }
 }
 
