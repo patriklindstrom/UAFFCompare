@@ -10,16 +10,18 @@ using CommandLine;
 
 namespace UAFFCompare
 {
+    /// <summary>
+    /// We want the following set operations: 
+    /// not A and B => DiffFile  (see http://www.wolframalpha.com/input/?i=not+A+and+B ) (Venn diagram http://www.wolframalpha.com/share/clip?f=d41d8cd98f00b204e9800998ecf8427e41kvo33uui)
+    /// A and B => IntersectionFile (see http://www.wolframalpha.com/input/?i=A+and+B ) ( Venn diagram  http://www.wolframalpha.com/share/clip?f=d41d8cd98f00b204e9800998ecf8427e7e2qko5194 )
+    /// NotaBene combined => (not A and B) or (A and B) (see http://www.wolframalpha.com/input/?i=%28not+A+and+B%29+or+%28A+and+B%29 ) (Venn Diagram http://www.wolframalpha.com/share/clip?f=d41d8cd98f00b204e9800998ecf8427eguh00j5eik)
+    /// DiffFile+IntersctionFile => FileB
+    /// </summary>
     internal class Program
     {
         /// <summary>
         /// Takes two parameters file A and File B. Set A is contained in B also.
         /// A is file n and B is file n+1
-        ///  We want the following set operations: 
-        /// not A and B => DiffFile  (see http://www.wolframalpha.com/input/?i=not+A+and+B ) (Venn diagram http://www.wolframalpha.com/share/clip?f=d41d8cd98f00b204e9800998ecf8427e41kvo33uui)
-        /// A and B => IntersectionFile (see http://www.wolframalpha.com/input/?i=A+and+B ) ( Venn diagram  http://www.wolframalpha.com/share/clip?f=d41d8cd98f00b204e9800998ecf8427e7e2qko5194 )
-        /// NotaBene combined => (not A and B) or (A and B) (see http://www.wolframalpha.com/input/?i=%28not+A+and+B%29+or+%28A+and+B%29 )
-        /// DiffFile+IntersctionFile => FileB
         /// </summary>
         /// <param name="args">-a fileA -b fileB -v optional verbose</param>
         private static void Main(string[] args)
@@ -50,6 +52,7 @@ namespace UAFFCompare
                     new OutputObj(name:"DiffB",dict:diffB,opt: options),
                     new OutputObj(name:"IntersectAandB",dict:intersectAandB, opt:options)
                 };
+                //Multithread the output of files
                 Parallel.ForEach(outPutList, oL => oL.Output());
                 VerboseConsoleEndMsg(options,programStopwatch); 
                 programStopwatch.Stop();
