@@ -1,17 +1,12 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
 using CommandLine;
-using CommandLine.Text;
 
 namespace UAFFCompare
 {
@@ -20,7 +15,7 @@ namespace UAFFCompare
         /// <summary>
         /// Takes two parameters file A and File B. Set A is contained in B also.
         /// A is file n and B is file n+1
-        ///  We want the difference from (in bool notation): 
+        ///  We want the following set operatins: 
         /// not A and B=> DiffFile  (see http://www.wolframalpha.com/input/?i=not+A+and+B ) 
         /// A and B => IntersectionFile (see http://www.wolframalpha.com/input/?i=A+and+B ) 
         /// NotaBene combined => (not A and B) or (A and B) (see http://www.wolframalpha.com/input/?i=%28not+A+and+B%29+or+%28A+and+B%29 )
@@ -30,25 +25,25 @@ namespace UAFFCompare
         private static void Main(string[] args)
         {
             var options = new Options();
-            if (CommandLine.Parser.Default.ParseArguments(args, options))
+            if (Parser.Default.ParseArguments(args, options))
             {
                 var programStopwatch = Stopwatch.StartNew();
-                var dictList = new List<FileDictionaryDigger>
+                var chunkList = new List<DataChunk>
                 {
-                    new FileDictionaryDigger(options.FileA,"A", options),
-                    new FileDictionaryDigger(options.FileB,"B", options)
+                    new DataChunk(options.FileA,"A", options),
+                    new DataChunk(options.FileB,"B", options)
                 };
                 //Multithread the reading of files and making dictionary of all lines in file
-                Parallel.ForEach(dictList, dl => dl.DigDictionary());
+                Parallel.ForEach(chunkList, dl => dl.GetDataContent(new FileLineReader(dl.FilePath)));
                 //Give the sets nicer names
-                var a = dictList.First(f => f.Name == "A");
-                var b = dictList.First(f => f.Name == "B"); 
+                var a = chunkList.First(f => f.Name == "A");
+                var b = chunkList.First(f => f.Name == "B"); 
                 //We need Compare to use set logic on keys only not Key and Value which is the default - odd that is the default and we have to override it.
                 var keyOnly = new DictCompareOnKeyOnly();
                 //Here comes the magic simple Except and Intersect and force it back to Dictionary.
                 Dictionary<string, string> diffB = b.LineDictionary.Except(a.LineDictionary, keyOnly).ToDictionary(ld=>ld.Key,ld=>ld.Value);
                 Dictionary<string, string> intersectAandB = b.LineDictionary.Intersect(a.LineDictionary, keyOnly).ToDictionary(ld => ld.Key, ld => ld.Value);
-                VerboseConsoleStatisticsOutput(options,dictList, intersectAandB, diffB, programStopwatch); 
+                VerboseConsoleStatisticsOutput(options,chunkList, intersectAandB, diffB, programStopwatch); 
                 //Here we save the output as text files
                 var outPutList = new List<OutputObj>
                 {
@@ -60,7 +55,7 @@ namespace UAFFCompare
                 programStopwatch.Stop();
             }
         }
-        private static void VerboseConsoleStatisticsOutput(Options options, List<FileDictionaryDigger> dictList, Dictionary<string, string> ldIntersectAandB, Dictionary<string, string> ldDiffB, Stopwatch programStopwatch)
+        private static void VerboseConsoleStatisticsOutput(Options options, List<DataChunk> dictList, Dictionary<string, string> ldIntersectAandB, Dictionary<string, string> ldDiffB, Stopwatch programStopwatch)
         {
             if (options.Verbose)
             {                           
@@ -82,40 +77,9 @@ namespace UAFFCompare
                 Console.ReadLine();
             }
         }
-
     }
-
-    public class OutputObj
+ public class DataChunk
     {
-
-        public string Name { get; set; }
-        public Dictionary<string, string> Dict { get; set; }
-        public Options Opt { get; set; }
-
-        public OutputObj(string name, Dictionary<string, string> dict, Options opt)
-        {
-            Name = name;
-            Dict = dict;
-            Opt = opt;
-        }
-
-        public void Output()
-        {
-            string dir = Path.GetDirectoryName(Opt.FileB);
-            string ext = Path.GetExtension(Opt.FileB);
-            if (dir != null)
-            {
-                Directory.Exists(dir);
-                string fileName = Path.Combine(dir, Name + DateTime.Now.ToString("yyyMMddTHHmmss") + ext);
-                Dict.SaveValuesAsFile(fileName);
-            }
-        }
-    }
-
-    public class FileDictionaryDigger
-    {
-        private const int OFFSET_UNIQUE_START_FIELD = 3;
-        private string Filecontent { get; set; }
         public string Name { get; set; }
         public string FilePath
         {
@@ -127,7 +91,7 @@ namespace UAFFCompare
         public Options Option;
         private string _filePath;
 
-        public FileDictionaryDigger(string filePath,string name, Options option)
+        public DataChunk(string filePath,string name, Options option)
         {
             Option = option;
             FilePath = filePath;
@@ -135,12 +99,7 @@ namespace UAFFCompare
             LineDictionary = new Dictionary<string, string>();
         }
 
-        public void DigDictionary()
-        {
-            GetFileContent();
-        }
-
-        private void GetFileContent()
+        public void GetDataContent(ILineReader dr)
         {
             int i = 0; //rowcounter to see where error occured
             try
@@ -155,11 +114,11 @@ namespace UAFFCompare
                 }
 
                 #endregion
-                using (var sr = new DataReader(FilePath))
+                using (dr)
                 {
                     string line;
                     var rowKey = new StringBuilder();
-                    while ((line = sr.ReadLine()) != null)
+                    while ((line = dr.ReadLine()) != null)
                     {
                         i += 1;
                         var fieldArr = line.Split(';');
@@ -196,18 +155,56 @@ namespace UAFFCompare
         }
     }
 
+    #region Output to file or whateever Abstraktion
+
+    public interface IOutputObj
+    {
+        string Name { get; set; }
+        Dictionary<string, string> Dict { get; set; }
+        Options Opt { get; set; }
+        void Output();
+    }
+
+    public class OutputObj : IOutputObj
+    {
+        public string Name { get; set; }
+        public Dictionary<string, string> Dict { get; set; }
+        public Options Opt { get; set; }
+
+        public OutputObj(string name, Dictionary<string, string> dict, Options opt)
+        {
+            Name = name;
+            Dict = dict;
+            Opt = opt;
+        }
+
+        public void Output()
+        {
+            string dir = Path.GetDirectoryName(Opt.FileB);
+            string ext = Path.GetExtension(Opt.FileB);
+            if (!String.IsNullOrEmpty(dir))
+            {
+                Directory.Exists(dir);
+                string fileName = Path.Combine(dir, Name + "_" + DateTime.Now.ToString("yyyMMddTHHmmss") + ext);
+                Dict.SaveValuesAsFile(fileName);
+            }
+        }
+    }
+
+    #endregion
+
     #region Stuff to abstract the StreamText Reader into DataReader
 
-    internal interface ILineReader
+    public interface ILineReader : IDisposable
     {
         string ReadLine();
     }
 
-    public class DataReader : ILineReader, IDisposable
+    public class FileLineReader : ILineReader, IDisposable
     {
         public StreamReader StreamReader { get; set; }
 
-        public DataReader(string path)
+        public FileLineReader(string path)
         {
             Debug.Assert(String.IsNullOrEmpty(path) == false);
             Debug.WriteLine(path);
@@ -290,7 +287,7 @@ namespace UAFFCompare
             usage.AppendLine(
                 String.Format(
                     "UAFFCompare Application takes Difference between two cvs files on columns 4,6,7 version {0}",
-                    Assembly.GetExecutingAssembly().GetName().Version.ToString()));
+                    Assembly.GetExecutingAssembly().GetName().Version));
             usage.AppendLine("give help as param for help. Simple usage -a[fileA] -b[fileB] ");
             usage.AppendLine("Developed by Patrik Lindström 2015-02-25");
             return usage.ToString();
