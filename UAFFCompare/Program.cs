@@ -81,7 +81,17 @@ namespace UAFFCompare
             }
         }
     }
- public class DataChunk
+
+    public interface IDataChunk
+    {
+        string Name { get; set; }
+        string DataPath { get; set; }
+        Dictionary<string, string> LineDictionary { get; set; }
+        void GetDataContent(ILineReader dr);
+        void BuildRowKey(ref StringBuilder rowKey, string line, char splitChar, int[] keyColumns);
+    }
+
+    public class DataChunk : IDataChunk
     {
         public string Name { get; set; }
         public string DataPath  { get; set; }
@@ -152,7 +162,7 @@ namespace UAFFCompare
             #endregion
         }
 
-        private void BuildRowKey(ref StringBuilder rowKey, string line, char splitChar, int[] keyColumns)
+        public void BuildRowKey(ref StringBuilder rowKey, string line, char splitChar, int[] keyColumns)
      {
          var fieldArr = line.Split(splitChar);
          rowKey.Append(fieldArr[3]).Append("|").Append(fieldArr[5]).Append("|").Append(fieldArr[6]);
