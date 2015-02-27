@@ -30,7 +30,23 @@ namespace UAFFCompare.Test
         public void ShouldGenerateDataDictionary()
         {
             //Arrange
-            var mockOptions = MockRepository.GenerateStub<Options>();
+          //  var mockOptions = MockRepository.GenerateStub<Options>();
+            var mockOptions = new Options
+            {
+                FileA = Mv.FileA
+                ,
+                FileB = Mv.FileB
+                ,
+                DiffB = Mv.DiffB
+    ,
+                IntersectAandB = Mv.IntersectAandB
+                ,
+                Verbose = Mv.Verbose
+                ,
+                Fieldseparator = Mv.Splitchar
+                ,
+                Keycolumns = Mv.ColKeys
+            };
             var mockLineReader = MockRepository.GenerateStub<ILineReader>();
             mockLineReader.Stub(f => f.ReadLine()).Return(Mv.Line);
             //var expectedDict = new Dictionary<string, string> {{Mv.ExpectedKey, Mv.Line},{"foo","fum"}};

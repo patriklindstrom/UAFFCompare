@@ -293,8 +293,8 @@ namespace UAFFCompare
 
     public class Options : IOptions
     {
-        
-
+        // Good test parameters for deafult meaning: verbose fileA and fileB key is in combination of column [4,6,7] - where first column is called 1. Separator char is semikolon 
+        //-v -a"s:\Darkcompare\UAFF#.140206.TXT"  -b"s:\Darkcompare\UAFF#.140603.TXT" -k4 6 7 -s;
         [Option('a', "fileA", Required = true, HelpText = "Input A csv file to read.")]
         public string FileA { get; set; }
 
@@ -307,14 +307,13 @@ namespace UAFFCompare
 
         [Option('i', "IntersectAandB", Required = false, HelpText = "Calculate and output intersectAandB csv file.")]
         public bool IntersectAandB { get; set; }
-        [Option('c', "keycolumns", Required = false, HelpText = "What columns combined are the key of every row.")]
-        [OptionArray('k', "keycolumns", Required = false, DefaultValue = new int[] { 4, 5, 7 }, HelpText = "What columns combined are the key of every row.")]
+        [OptionArray('k', "keycolumns", Required = false, DefaultValue = new int[] {4, 6, 7}, HelpText = "What columns combined are the key of every row.")]
         public int[] Keycolumns { get; set; }
-        [Option('v', null, HelpText = "Print details during execution.")]
+        [Option('v', null, Required = false,HelpText = "Print details during execution.")]
         public bool Verbose { get; set; }
-        [Option('s', "fieldseparator",DefaultValue = ';',HelpText = "Char that separates every column")]
+        [Option('s', "fieldseparator", Required = false,DefaultValue = ';', HelpText = "Char that separates every column")]
         public char Fieldseparator { get; set; }
-        [Option('i', "version", HelpText = "Prints version number of program.")]
+        [Option('e', "version",Required = false, HelpText = "Prints version number of program.")]
         public string Version
         {
             get { return Assembly.GetExecutingAssembly().GetName().Version.ToString();
