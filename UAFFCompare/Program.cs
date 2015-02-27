@@ -95,7 +95,7 @@ namespace UAFFCompare
     {
         public string Name { get; set; }
         public string DataPath  { get; set; }
-        public Dictionary<string, string> LineDictionary { get; set; }
+        public Dictionary<string,string> LineDictionary { get; set; }
         public Options Option;
 
         public DataChunk(string dataPath,string name, Options option)
@@ -125,7 +125,7 @@ namespace UAFFCompare
                 {
                     string line;
                     var rowKey = new StringBuilder();
-                      var colKeys = new int[] {4, 6, 7};
+                    var colKeys = new int[] {4, 6, 7};
                     while ((line = dr.ReadLine()) != null)
                     {
                         i += 1;
@@ -165,7 +165,11 @@ namespace UAFFCompare
         public void BuildRowKey(ref StringBuilder rowKey, string line, char splitChar, int[] keyColumns)
      {
          var fieldArr = line.Split(splitChar);
-         rowKey.Append(fieldArr[3]).Append("|").Append(fieldArr[5]).Append("|").Append(fieldArr[6]);
+            for (int index = 0; index < keyColumns.Length-1; index++)
+            {
+                rowKey.Append(fieldArr[keyColumns[index] - 1]).Append("|");
+            }
+            rowKey.Append(fieldArr[keyColumns.Last() - 1]);
      }
     }
 
