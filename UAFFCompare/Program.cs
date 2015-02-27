@@ -15,9 +15,9 @@ namespace UAFFCompare
         /// <summary>
         /// Takes two parameters file A and File B. Set A is contained in B also.
         /// A is file n and B is file n+1
-        ///  We want the following set operatins: 
-        /// not A and B=> DiffFile  (see http://www.wolframalpha.com/input/?i=not+A+and+B ) 
-        /// A and B => IntersectionFile (see http://www.wolframalpha.com/input/?i=A+and+B ) 
+        ///  We want the following set operations: 
+        /// not A and B => DiffFile  (see http://www.wolframalpha.com/input/?i=not+A+and+B ) (Venn diagram http://www.wolframalpha.com/share/clip?f=d41d8cd98f00b204e9800998ecf8427e41kvo33uui)
+        /// A and B => IntersectionFile (see http://www.wolframalpha.com/input/?i=A+and+B ) ( Venn diagram  http://www.wolframalpha.com/share/clip?f=d41d8cd98f00b204e9800998ecf8427e7e2qko5194 )
         /// NotaBene combined => (not A and B) or (A and B) (see http://www.wolframalpha.com/input/?i=%28not+A+and+B%29+or+%28A+and+B%29 )
         /// DiffFile+IntersctionFile => FileB
         /// </summary>
@@ -112,12 +112,13 @@ namespace UAFFCompare
                 {
                     string line;
                     var rowKey = new StringBuilder();
+                      var colKeys = new int[] {4, 6, 7};
                     while ((line = dr.ReadLine()) != null)
                     {
                         i += 1;
-                        var fieldArr = line.Split(';');
-                        //Fields 4,6,7 makes the row unique according to rumours. Not that fieldArr is nollbased so it is: 3,5,6
-                        rowKey.Append(fieldArr[3]).Append("|").Append(fieldArr[5]).Append("|").Append(fieldArr[6]);
+                        
+                        //Fields 4,6,7 makes the row unique according to rumours. Not that fieldArr is nollbased so it is: 3,5,6                   
+                        BuildRowKey(ref rowKey, line, ';', colKeys);
                         LineDictionary.Add(rowKey.ToString(), line);
                         rowKey.Clear();
                     }
@@ -147,6 +148,12 @@ namespace UAFFCompare
 
             #endregion
         }
+
+        private void BuildRowKey(ref StringBuilder rowKey, string line, char splitChar, int[] keyColumns)
+     {
+         var fieldArr = line.Split(splitChar);
+         rowKey.Append(fieldArr[3]).Append("|").Append(fieldArr[5]).Append("|").Append(fieldArr[6]);
+     }
     }
 
     #region Output to file or whateever Abstraktion
