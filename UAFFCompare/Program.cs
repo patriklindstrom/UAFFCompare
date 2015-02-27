@@ -30,11 +30,11 @@ namespace UAFFCompare
                 var programStopwatch = Stopwatch.StartNew();
                 var chunkList = new List<DataChunk>
                 {
-                    new DataChunk(options.FileA,"A", options),
-                    new DataChunk(options.FileB,"B", options)
+                    new DataChunk(dataPath:options.FileA,name:"A", option:options),
+                    new DataChunk(dataPath:options.FileB,name:"B", option:options)
                 };
                 //Multithread the reading of files and making dictionary of all lines in file
-                Parallel.ForEach(chunkList, dl => dl.GetDataContent(new FileLineReader(dl.FilePath)));
+                Parallel.ForEach(chunkList, dl => dl.GetDataContent(new FileLineReader(dl.DataPath)));
                 //Give the sets nicer names
                 var a = chunkList.First(f => f.Name == "A");
                 var b = chunkList.First(f => f.Name == "B"); 
@@ -47,8 +47,8 @@ namespace UAFFCompare
                 //Here we save the output as text files
                 var outPutList = new List<OutputObj>
                 {
-                    new OutputObj("DiffB",diffB, options),
-                    new OutputObj("IntersectAandB",intersectAandB, options)
+                    new OutputObj(name:"DiffB",dict:diffB,opt: options),
+                    new OutputObj(name:"IntersectAandB",dict:intersectAandB, opt:options)
                 };
                 Parallel.ForEach(outPutList, oL => oL.Output());
                 VerboseConsoleEndMsg(options,programStopwatch); 
@@ -60,10 +60,10 @@ namespace UAFFCompare
             if (options.Verbose)
             {                           
             var a = dictList.First(f => f.Name == "A");
-            var b = dictList.First(f => f.Name == "B"); 
-            Console.WriteLine("File {0} ({4}) has {1} keys. {2} of them exist in file {3} ({5}) also",Path.GetFileName(b.FilePath), b.LineDictionary.Count(), ldIntersectAandB.Count(),Path.GetFileName(a.FilePath), b.Name, a.Name);
-            Console.WriteLine("File {0} ({4}) has {1} keys. {2} of them do not exist in file {3} ({5})",Path.GetFileName(b.FilePath), b.LineDictionary.Count(), ldDiffB.Count(),Path.GetFileName(a.FilePath),b.Name, a.Name);
-            Console.WriteLine("Same ({0}) + Diff ({1}) = {2} == Number of rows in ({5}) {3} ({4})  ", ldIntersectAandB.Count(),ldDiffB.Count(), ldIntersectAandB.Count() + ldDiffB.Count(), Path.GetFileName(b.FilePath),b.LineDictionary.Count(),b.Name);
+            var b = dictList.First(f => f.Name == "B");
+            Console.WriteLine("File {0} ({4}) has {1} keys. {2} of them exist in file {3} ({5}) also", Path.GetFileName(b.DataPath), b.LineDictionary.Count(), ldIntersectAandB.Count(), Path.GetFileName(a.DataPath), b.Name, a.Name);
+            Console.WriteLine("File {0} ({4}) has {1} keys. {2} of them do not exist in file {3} ({5})", Path.GetFileName(b.DataPath), b.LineDictionary.Count(), ldDiffB.Count(), Path.GetFileName(a.DataPath), b.Name, a.Name);
+            Console.WriteLine("Same ({0}) + Diff ({1}) = {2} == Number of rows in ({5}) {3} ({4})  ", ldIntersectAandB.Count(), ldDiffB.Count(), ldIntersectAandB.Count() + ldDiffB.Count(), Path.GetFileName(b.DataPath), b.LineDictionary.Count(), b.Name);
             Console.WriteLine("Time after creating set operator {0} ms", programStopwatch.ElapsedMilliseconds);
             Console.ForegroundColor = ConsoleColor.White;
             }
@@ -81,20 +81,14 @@ namespace UAFFCompare
  public class DataChunk
     {
         public string Name { get; set; }
-        public string FilePath
-        {
-            get { return _filePath ?? String.Empty; }
-            set { _filePath = value; }
-        }
-
+        public string DataPath  { get; set; }
         public Dictionary<string, string> LineDictionary { get; set; }
         public Options Option;
-        private string _filePath;
 
-        public DataChunk(string filePath,string name, Options option)
+        public DataChunk(string dataPath,string name, Options option)
         {
             Option = option;
-            FilePath = filePath;
+            DataPath = dataPath;
             Name = name;
             LineDictionary = new Dictionary<string, string>();
         }
@@ -110,7 +104,7 @@ namespace UAFFCompare
                 if (Option.Verbose)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkRed;
-                    Console.WriteLine("Start reading {0}", FilePath);
+                    Console.WriteLine("Start reading {0}", DataPath);
                 }
 
                 #endregion
@@ -134,7 +128,7 @@ namespace UAFFCompare
                 if (Option.Verbose)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkGreen;
-                    Console.WriteLine("Done Reading {0} called file {3}. It took {1} ms and contained {2} rows", FilePath,fileStopwatch.Elapsed.Milliseconds, LineDictionary.Count,Name);
+                    Console.WriteLine("Done Reading {0} called file {3}. It took {1} ms and contained {2} rows", DataPath, fileStopwatch.Elapsed.Milliseconds, LineDictionary.Count, Name);
                     Console.ForegroundColor = ConsoleColor.DarkRed;
                 }
 
@@ -146,7 +140,7 @@ namespace UAFFCompare
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("The file {0} could not be transformed to Dictionary structure error in line {1}:",
-                    FilePath, i);
+                    DataPath, i);
                 Console.WriteLine(e.Message);
                 Console.ForegroundColor = ConsoleColor.White;
             }
