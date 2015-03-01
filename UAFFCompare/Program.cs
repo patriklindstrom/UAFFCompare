@@ -11,6 +11,8 @@ using CommandLine;
 
 namespace UAFFCompare
 {
+
+
     /// <summary>
     /// We want the following set operations: 
     /// not A and B => DiffFile  (see http://www.wolframalpha.com/input/?i=not+A+and+B ) (Venn diagram http://www.wolframalpha.com/share/clip?f=d41d8cd98f00b204e9800998ecf8427e41kvo33uui)
@@ -18,20 +20,18 @@ namespace UAFFCompare
     /// NotaBene combined => (not A and B) or (A and B) (see http://www.wolframalpha.com/input/?i=%28not+A+and+B%29+or+%28A+and+B%29 ) (Venn Diagram http://www.wolframalpha.com/share/clip?f=d41d8cd98f00b204e9800998ecf8427eguh00j5eik)
     /// DiffFile+IntersctionFile => FileB
     /// </summary>
-    internal class Program
+    public class Program
     {
         /// <summary>
         /// Takes two parameters file A and File B. Set A is contained in B also.
         /// A is file n and B is file n+1
         /// </summary>
         /// <param name="args">-a fileA -b fileB -v optional verbose</param>
-        private static void Main(string[] args)
+        public static void Main(string[] args)
         {
             var options = new Options();
             if (Parser.Default.ParseArguments(args, options))
             {
-                Console.WriteLine("I am ready to start when you are");
-               // Console.ReadLine();
                 var programStopwatch = Stopwatch.StartNew();
                 var chunkList = new List<DataChunk>
                 {
@@ -45,42 +45,22 @@ namespace UAFFCompare
                 var b = chunkList.First(f => f.Name == "B"); 
                 //We need Compare to use set logic on keys only not Key and Value which is the default - odd that is the default and we have to override it.
                 var keyOnly = new DictCompareOnKeyOnly();
-                //Here comes the magic simple Except and Intersect and force it back to Dictionary.
-                Dictionary<string, string> diffB = b.LineDictionary.Except(a.LineDictionary, keyOnly).ToDictionary(ld=>ld.Key,ld=>ld.Value);
-                Dictionary<string, string> intersectAandB = b.LineDictionary.Intersect(a.LineDictionary, keyOnly).ToDictionary(ld => ld.Key, ld => ld.Value);
-                VerboseConsoleStatisticsOutput(options,chunkList, intersectAandB, diffB, programStopwatch); 
-                //Here we save the output as text files
+                var setOp = new SetOperator();
+                //Here we save the output as text files and do magic in the DiffDB function
                 var outPutList = new List<OutputObj>
                 {
-                    new OutputObj(name:"DiffB",dict:diffB,opt: options),
-                    new OutputObj(name:"IntersectAandB",dict:intersectAandB, opt:options)
+                    new OutputObj(name:"DiffB",dict: setOp.DiffB(b, a, keyOnly,options),opt: options),
                 };
                 //Multithread the output of files
                 Parallel.ForEach(outPutList, oL => oL.Output());
-                VerboseConsoleEndMsg(options,programStopwatch); 
                 programStopwatch.Stop();
-            }
-        }
-        private static void VerboseConsoleStatisticsOutput(Options options, List<DataChunk> dictList, Dictionary<string, string> ldIntersectAandB, Dictionary<string, string> ldDiffB, Stopwatch programStopwatch)
-        {
-            if (options.Verbose)
-            {                           
-            var a = dictList.First(f => f.Name == "A");
-            var b = dictList.First(f => f.Name == "B");
-            Console.WriteLine("File {0} ({4}) has {1} keys. {2} of them exist in file {3} ({5}) also", Path.GetFileName(b.DataPath), b.LineDictionary.Count(), ldIntersectAandB.Count(), Path.GetFileName(a.DataPath), b.Name, a.Name);
-            Console.WriteLine("File {0} ({4}) has {1} keys. {2} of them do not exist in file {3} ({5})", Path.GetFileName(b.DataPath), b.LineDictionary.Count(), ldDiffB.Count(), Path.GetFileName(a.DataPath), b.Name, a.Name);
-            Console.WriteLine("Same ({0}) + Diff ({1}) = {2} == Number of rows in ({5}) {3} ({4})  ", ldIntersectAandB.Count(), ldDiffB.Count(), ldIntersectAandB.Count() + ldDiffB.Count(), Path.GetFileName(b.DataPath), b.LineDictionary.Count(), b.Name);
-            Console.WriteLine("Time after creating set operator {0} ms", programStopwatch.ElapsedMilliseconds);
-            Console.ForegroundColor = ConsoleColor.White;
-            }
-        }
-        private static void VerboseConsoleEndMsg(Options options, Stopwatch programStopwatch)
-        {
-            if (options.Verbose)
-            {
-                Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms",
-                    programStopwatch.Elapsed.Milliseconds);
-                Console.ReadLine();
+                if (options.Verbose)
+                {
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.WriteLine("Done ! hit any key to exit program. ExecutionTime was {0} ms",
+                        programStopwatch.Elapsed.Milliseconds);
+                    Console.ReadLine();
+                }
             }
         }
     }
@@ -95,6 +75,23 @@ namespace UAFFCompare
         void BuildRowKey(ref StringBuilder rowKey, string line, char splitChar, int[] keyColumns);
     }
 
+    public class SetOperator
+    {
+        public Dictionary<string, string> DiffB(DataChunk b, DataChunk a, DictCompareOnKeyOnly keyOnly, Options options)
+        {                //Here comes the magic simple Except and Intersect and force it back to Dictionary.
+            var setDiffSw = Stopwatch.StartNew();
+            var diffB = b.LineDictionary.Except(a.LineDictionary, keyOnly).ToDictionary(ld => ld.Key, ld => ld.Value);
+
+            if (options.Verbose)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("File {0} ({4}) has {1} keys. {2} of them do not exist in file {3} ({5})", Path.GetFileName(b.DataPath), b.LineDictionary.Count(), diffB.Count(), Path.GetFileName(a.DataPath), b.Name, a.Name);
+                Console.WriteLine("Time after creating set operator {0} ms", setDiffSw.ElapsedMilliseconds);
+            }
+            setDiffSw.Stop();
+            return diffB;
+        }
+    }
     public class DataChunk : IDataChunk
     {
         public string Name { get; set; }
@@ -212,9 +209,16 @@ namespace UAFFCompare
             string ext = Path.GetExtension(Opt.FileB);
             if (!String.IsNullOrEmpty(dir))
             {
+                var fileWriteStopWatch = Stopwatch.StartNew();
                 Directory.Exists(dir);
                 string fileName = Path.Combine(dir, Name + "_" + DateTime.Now.ToString("yyyMMddTHHmmss") + ext);
                 Dict.SaveValuesAsFile(fileName,Opt);
+                if (Opt.Verbose)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkGreen;
+                    Console.WriteLine("Done Writing {0} called file {3}. It took {1} ms and contained {2} rows", fileName, fileWriteStopWatch.Elapsed.Milliseconds, Dict.Count, Name);
+                }
+                fileWriteStopWatch.Stop();
             }
         }
     }

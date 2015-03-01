@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Microsoft.SqlServer.Server;
 using NUnit.Framework;
 using Rhino.Mocks;
+using Rhino.Mocks.Utilities;
 
 namespace UAFFCompare.Test
 {
@@ -117,16 +115,17 @@ namespace UAFFCompare.Test
                 ,
                 Keycolumns = Mv.ColKeys
             };
-            //Act
-
             var mockLineReader = MockRepository.GenerateStub<ILineReader>();
             mockLineReader.Stub(f => f.ReadLine()).Return(Mv.Line);
             var expectedDict = new Dictionary<string, string> { { Mv.ExpectedKey, Mv.Line } };
             var sut = new DataChunk(dataPath: Mv.DataPath, name: Mv.Name, option: opt);
         
+            //Act
             sut.GetDataContent(mockLineReader);
             //Assert
             mockLineReader.AssertWasCalled(r=>r.ReadLine());
         }
+
+    
     }
 }
