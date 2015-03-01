@@ -11,7 +11,7 @@ using CommandLine;
 
 namespace UAFFCompare
 {
-
+    // params used while running -v -a"s:\Darkcompare\UAFF#.140206.TXT"  -b"s:\Darkcompare\UAFF#.140603.TXT" -k4 6 7 -s;
 
     /// <summary>
     /// We want the following set operations: 
@@ -21,7 +21,7 @@ namespace UAFFCompare
     /// DiffFile+IntersctionFile => FileB
     /// </summary>
     public class Program
-    {
+    { 
         /// <summary>
         /// Takes two parameters file A and File B. Set A is contained in B also.
         /// A is file n and B is file n+1
