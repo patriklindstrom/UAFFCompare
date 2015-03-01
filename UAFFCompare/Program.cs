@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -29,6 +30,8 @@ namespace UAFFCompare
             var options = new Options();
             if (Parser.Default.ParseArguments(args, options))
             {
+                Console.WriteLine("I am ready to start when you are");
+               // Console.ReadLine();
                 var programStopwatch = Stopwatch.StartNew();
                 var chunkList = new List<DataChunk>
                 {
@@ -128,12 +131,17 @@ namespace UAFFCompare
                     var rowKey = new StringBuilder();
                     var colKeys =Option.Keycolumns;
                     var sepChar = Option.Fieldseparator;
+
                     while ((line = dr.ReadLine()) != null)
                     {
                         i += 1;
                         
                         //Fields 4,6,7 makes the row unique according to rumours. Not that fieldArr is nollbased so it is: 3,5,6                   
                         BuildRowKey(ref rowKey, line, sepChar, colKeys);
+                        if (Option.FieldCompression)
+                        {
+                            line = StringCompressor.CompressString(line);
+                        }
                         LineDictionary.Add(rowKey.ToString(), line);
                         rowKey.Clear();
                     }
@@ -206,7 +214,7 @@ namespace UAFFCompare
             {
                 Directory.Exists(dir);
                 string fileName = Path.Combine(dir, Name + "_" + DateTime.Now.ToString("yyyMMddTHHmmss") + ext);
-                Dict.SaveValuesAsFile(fileName);
+                Dict.SaveValuesAsFile(fileName,Opt);
             }
         }
     }
@@ -259,11 +267,13 @@ namespace UAFFCompare
         /// </summary>
         /// <param name="dict">this dictionary</param>
         /// <param name="filePath">The path to where the files should be stored eg: c:\temp</param>
-        public static void SaveValuesAsFile(this Dictionary<string, string> dict, string filePath)
+        public static void SaveValuesAsFile(this Dictionary<string, string> dict, string filePath,Options opt)
         {
             using (StreamWriter writer = new StreamWriter(filePath))
                 foreach (var item in dict)
-                    writer.WriteLine("{0}", item.Value);
+
+                    writer.WriteLine("{0}",
+                        opt.FieldCompression ? StringCompressor.DecompressString(item.Value) : item.Value);
         }
     }
 
@@ -288,7 +298,9 @@ namespace UAFFCompare
         bool DiffB { get; set; }
         bool IntersectAandB { get; set; }
         bool Verbose { get; set; }
+        bool FieldCompression { get; set; }
         int[] Keycolumns { get; set; }
+
         string GetUsage();
     }
 
@@ -314,6 +326,8 @@ namespace UAFFCompare
         public bool Verbose { get; set; }
         [Option('s', "fieldseparator", Required = false,DefaultValue = ';', HelpText = "Char that separates every column")]
         public char Fieldseparator { get; set; }
+        [Option('c', "fieldcompression", Required = false, DefaultValue = false, HelpText = "Compressess the row. Takes less memory but maybe longer time.")]
+        public bool FieldCompression { get; set; }
         [Option('e', "version",Required = false, HelpText = "Prints version number of program.")]
         public string Version
         {
@@ -337,6 +351,60 @@ namespace UAFFCompare
             return usage.ToString();
         }
     }
+    
+    internal static class StringCompressor
+    {
+        /// <summary>
+        /// Compresses the string.
+        /// </summary>
+        /// <param name="text">The text.</param>
+        /// <returns></returns>
+        public static string CompressString(string text)
+        {
+            byte[] buffer = Encoding.UTF8.GetBytes(text);
+            var memoryStream = new MemoryStream();
+            using (var gZipStream = new GZipStream(memoryStream, CompressionMode.Compress, true))
+            {
+                gZipStream.Write(buffer, 0, buffer.Length);
+            }
+
+            memoryStream.Position = 0;
+
+            var compressedData = new byte[memoryStream.Length];
+            memoryStream.Read(compressedData, 0, compressedData.Length);
+
+            var gZipBuffer = new byte[compressedData.Length + 4];
+            Buffer.BlockCopy(compressedData, 0, gZipBuffer, 4, compressedData.Length);
+            Buffer.BlockCopy(BitConverter.GetBytes(buffer.Length), 0, gZipBuffer, 0, 4);
+            return Convert.ToBase64String(gZipBuffer);
+        }
+
+        /// <summary>
+        /// Decompresses the string.
+        /// </summary>
+        /// <param name="compressedText">The compressed text.</param>
+        /// <returns></returns>
+        public static string DecompressString(string compressedText)
+        {
+            byte[] gZipBuffer = Convert.FromBase64String(compressedText);
+            using (var memoryStream = new MemoryStream())
+            {
+                int dataLength = BitConverter.ToInt32(gZipBuffer, 0);
+                memoryStream.Write(gZipBuffer, 4, gZipBuffer.Length - 4);
+
+                var buffer = new byte[dataLength];
+
+                memoryStream.Position = 0;
+                using (var gZipStream = new GZipStream(memoryStream, CompressionMode.Decompress))
+                {
+                    gZipStream.Read(buffer, 0, buffer.Length);
+                }
+
+                return Encoding.UTF8.GetString(buffer);
+            }
+        }
+    }
+
     #endregion
 
 }
